@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Aria - AI Voice Concierge</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/livekit-client@1.15.4/dist/livekit-client.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: { primary: "#F9572A", "background-dark": "#050505" },
+                    fontFamily: { display: ["Space Grotesk", "sans-serif"], body: ["Inter", "sans-serif"] },
+                    animation: { 
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite', 
+                        'float': 'float 6s ease-in-out infinite',
+                        'spin-slow': 'spin 8s linear infinite',
+                    },
+                    keyframes: { float: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-20px)' } } }
+                },
+            },
+        };
+    </script>
+
+    <style>
+        /* Premium Glassmorphism */
+        .glass-panel { 
+            background: rgba(255, 255, 255, 0.02); 
+            backdrop-filter: blur(40px) saturate(150%); 
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+        }
+
+        /* Noise Texture Overlay */
+        .bg-grain {
+            background-image: url("https://grainy-gradients.vercel.app/noise.svg");
+            filter: contrast(150%) brightness(1000%);
+            opacity: 0.03;
+            pointer-events: none;
+        }
+
+        /* Subtle Grid */
+        .bg-grid {
+            background-image: radial-gradient(rgba(249, 87, 42, 0.1) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        .frameless-avatar video {
+            width: 100%; height: 100%; object-fit: cover;
+            mask-image: radial-gradient(circle at center, black 30%, rgba(0,0,0,0.4) 50%, transparent 70%);
+            -webkit-mask-image: radial-gradient(circle at center, black 30%, rgba(0,0,0,0.4) 50%, transparent 70%);
+        }
+
+        .writing-vertical-rl { writing-mode: vertical-rl; }
+
+        .aria-branding {
+            background: linear-gradient(180deg, #F9572A 0%, rgba(249, 87, 42, 0.05) 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+
+        /* Smooth text transitions */
+        #ariaStatusText { transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+    </style>
+</head>
+
+<body class="h-screen w-full overflow-hidden relative bg-background-dark text-white font-body">
+    <div class="absolute inset-0 bg-grid z-0"></div>
+    <div class="absolute inset-0 bg-grain z-0"></div>
+
+    <div id="start-overlay" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-2xl">
+        <div class="text-center px-6">
+            <div class="mb-4 inline-block px-3 py-1 border border-primary/30 rounded-full bg-primary/5">
+                <span class="text-primary text-[10px] uppercase tracking-[0.3em] font-bold">Secure Connection</span>
+            </div>
+            <h2 class="font-display text-4xl md:text-6xl font-bold mb-10 tracking-tight">Ready to speak <br class="md:hidden"> with <span class="text-primary">Aria?</span></h2>
+            <button onclick="startSession()" class="group relative bg-primary hover:bg-orange-600 text-black font-display font-bold uppercase tracking-widest rounded-full px-16 py-6 transition-all shadow-[0_0_40px_rgba(249,87,42,0.2)] hover:shadow-[0_0_60px_rgba(249,87,42,0.4)] transform hover:scale-105">
+                Establish Connection
+            </button>
+        </div>
+    </div>
+
+    <div class="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        <div class="absolute -bottom-1/4 -left-1/4 w-[800px] h-[800px] rounded-full bg-primary/10 blur-[140px]"></div>
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 blur-[120px] animate-pulse-slow"></div>
+    </div>
+
+    <div class="absolute right-0 top-0 bottom-0 w-24 flex items-center justify-center pointer-events-none z-10 border-l border-white/5">
+    <div class="flex flex-col items-center gap-8 text-white/10 font-display font-bold text-xl uppercase select-none tracking-widest leading-none">
+        <div class="flex flex-col items-center">
+            <span>B</span>
+            <span>E</span>
+        </div>
+        
+        <div class="flex flex-col items-center">
+            <span>R</span>
+            <span>E</span>
+            <span>A</span>
+            <span>D</span>
+            <span>Y</span>
+        </div>
+
+        <div class="flex flex-col items-center">
+            <span>F</span>
+            <span>O</span>
+            <span>R</span>
+        </div>
+
+        <div class="flex flex-col items-center">
+            <span>T</span>
+            <span>O</span>
+            <span>M</span>
+            <span>O</span>
+            <span>R</span>
+            <span>R</span>
+            <span>O</span>
+            <span>W</span>
+        </div>
+    </div>
+</div>
+
+    <div class="absolute left-0 top-0 bottom-0 w-48 md:w-80 flex items-center justify-center pointer-events-none select-none z-10">
+        <h1 class="font-display font-bold text-[180px] md:text-[280px] aria-branding writing-vertical-rl rotate-180 opacity-40 tracking-tighter leading-none select-none">
+            ARIA
+        </h1>
+    </div>
+
+    <div id="summaryPanel" class="fixed inset-y-0 right-0 w-full md:w-[450px] z-50 transform translate-x-full transition-transform duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]">
+        <div class="h-[calc(100%-2rem)] glass-panel m-4 rounded-[2.5rem] p-10 flex flex-col gap-8">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h2 class="font-display font-bold text-3xl text-primary tracking-tight">Session Summary</h2>
+                    <p class="text-[10px] text-gray-500 uppercase tracking-widest mt-1">Archived session logs</p>
+                </div>
+                <button onclick="toggleSummary()" class="w-12 h-12 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-full transition-all">
+                    <span class="material-icons-round">close</span>
+                </button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto pr-2 space-y-6">
+                <div class="space-y-4">
+                    <h3 class="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-2">
+                        <span class="w-1 h-1 bg-primary rounded-full"></span> Aria's Notes
+                    </h3>
+                    <p id="summaryText" class="text-gray-300 leading-relaxed font-light text-lg italic">Awaiting final generation...</p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="p-6 rounded-3xl bg-white/5 border border-white/5">
+                        <p class="text-[10px] text-gray-400 uppercase mb-2 tracking-widest">Total Duration</p>
+                        <p id="statDuration" class="text-3xl font-display font-medium">00:00</p>
+                    </div>
+                    <div class="p-6 rounded-3xl bg-white/5 border border-white/5">
+                        <p class="text-[10px] text-gray-400 uppercase mb-2 tracking-widest">Actions</p>
+                        <p id="statActions" class="text-3xl font-display font-medium text-primary">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="window.location.reload()" class="w-full py-5 rounded-2xl bg-primary text-black font-display font-bold uppercase tracking-widest hover:bg-orange-600 transition-all shadow-lg">
+                New Session
+            </button>
+        </div>
+    </div>
+
+    <div class="relative z-20 h-full w-full flex flex-col justify-between p-8 md:p-14">
+        <header class="w-full flex justify-between items-start">
+            <div class="group">
+                <div class="flex items-center gap-2">
+                    <span class="font-display font-bold text-2xl tracking-tight text-primary">Aria</span>
+                    <span class="text-white/60 font-light text-2xl tracking-tight">Concierge</span>
+                </div>
+                <p id="sessionIdDisplay" class="text-[9px] text-gray-500 font-mono tracking-[0.3em] uppercase mt-1 group-hover:text-primary/50 transition-colors">ID: INITIALIZING...</p>
+            </div>
+            
+            <div class="flex items-center gap-6 glass-panel px-6 py-3 rounded-full border-white/5">
+                <div class="flex items-center gap-3">
+                    <div id="statusDot" class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></div>
+                    <span class="text-xs font-semibold tracking-widest uppercase text-gray-400"><span id="connectionStatus">Connecting</span></span>
+                </div>
+            </div>
+        </header>
+
+        <div id="avatar-container" class="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div class="relative w-[380px] h-[380px] md:w-[550px] md:h-[550px] flex items-center justify-center pointer-events-auto">
+                <div class="absolute inset-0 bg-primary/10 rounded-full blur-[100px] animate-pulse-slow"></div>
+                <div class="absolute inset-10 border border-primary/10 rounded-full animate-spin-slow"></div>
+                
+                <div id="avatar-render" class="relative w-full h-full frameless-avatar animate-float flex items-center justify-center">
+                    <div class="relative flex flex-col items-center gap-4">
+                        <div class="w-16 h-16 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+                        <p class="text-[10px] tracking-[0.5em] text-primary/50 uppercase font-bold">Initializing Avatar</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="w-full relative z-30 flex flex-col md:flex-row items-center md:items-end justify-between gap-8 md:gap-0">
+            <div class="flex flex-col gap-8 w-full md:w-auto">
+                <div class="flex items-center gap-4 border-l-2 border-primary/40 pl-6 py-2 select-none">
+                    <div class="space-y-1">
+                        <p class="text-[10px] uppercase tracking-[0.5em] font-bold text-white/40">
+                            Neural Intelligence <span class="text-primary/80">Active</span>
+                        </p>
+                        <p class="text-[9px] uppercase tracking-[0.2em] text-gray-600 font-medium">Ready for instructions</p>
+                    </div>
+                </div>
+
+                <div id="wrap-up-display" class="max-w-xl h-12">
+                    <div id="ariaStatusText" class="text-xl font-light text-gray-400 tracking-wide"></div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4 glass-panel p-2 rounded-full border-white/10 shadow-2xl">
+                <button id="muteBtn" onclick="toggleMute()" class="w-14 h-14 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 transition-all group">
+                    <span id="muteIcon" class="material-icons-round text-white/70 text-2xl group-hover:text-white">mic</span>
+                </button>
+                <button onclick="endSession()" class="bg-primary hover:bg-orange-600 text-black font-display font-bold uppercase tracking-widest rounded-full h-14 px-10 flex items-center gap-3 transition-all transform hover:scale-105 active:scale-95 shadow-lg">
+                    <span class="material-icons-round">call_end</span> End session
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        const BACKEND_URL = "http://localhost:8000/getToken";
+        const LIVEKIT_URL = "wss://support-agent-nu9xxa6s.livekit.cloud";
+
+        let room;
+        let isMuted = false;
+        let startTime;
+        let actionHistory = [];
+
+        const toolMap = {
+            "identify_user": "Verified Identity",
+            "fetch_slots": "Checked Availability",
+            "book_appointment": "Booked Appointment",
+            "retrieve_appointments": "Accessed Records",
+            "modify_appointment": "Updated Schedule",
+            "cancel_appointment": "Cancelled Appointment",
+            "summarize_and_exit": "Finalized Session"
+        };
+
+        async function startSession() {
+            document.getElementById('start-overlay').style.display = 'none';
+            try {
+                const response = await fetch(BACKEND_URL);
+                const data = await response.json();
+                document.getElementById('sessionIdDisplay').innerText = `ID: ${data.roomName.split('-').pop()}`;
+
+                const LKC = window.LivekitClient || window.LiveKit;
+                room = new LKC.Room();
+                
+                room.on('dataReceived', (payload) => {
+                    const decoder = new TextDecoder();
+                    const rawString = decoder.decode(payload);
+                    try {
+                        const packet = JSON.parse(rawString);
+                        
+                        if (packet.type === 'tool_call' && packet.status === 'active') {
+                            const actionName = toolMap[packet.tool_name] || "Processing...";
+                            const statusLabel = document.getElementById('ariaStatusText');
+
+                            statusLabel.innerHTML = `
+                                <span class="flex items-center gap-3 text-primary font-medium animate-pulse">
+                                    <span class="material-icons-round text-sm">sync</span>
+                                    <span class="uppercase tracking-widest text-xs">Aria is ${actionName.toLowerCase()}...</span>
+                                </span>
+                            `;
+
+                            if (!actionHistory.includes(actionName)) actionHistory.push(actionName);
+                        }
+
+                        const summaryContent = packet.summary || packet.payload?.summary;
+                        
+                        if (summaryContent) {
+                            const sidebarText = document.getElementById('summaryText');
+                            const sidebarActions = document.getElementById('statActions');
+                            sidebarText.innerText = summaryContent; 
+                            sidebarActions.innerText = packet.action_count || actionHistory.length;
+                        }
+                    } catch (e) { console.error("Parse Fail:", e); }
+                });
+
+                room.on(LKC.RoomEvent.TrackSubscribed, (track) => {
+                    if (track.kind === 'video') {
+                        const renderArea = document.getElementById('avatar-render');
+                        renderArea.innerHTML = ""; renderArea.appendChild(track.attach());
+                        const sig = document.getElementById('connectionStatus');
+                        const dot = document.getElementById('statusDot');
+                        sig.innerText = "Listening";
+                        sig.parentElement.className = "text-xs font-semibold tracking-widest uppercase text-green-400";
+                        dot.className = "w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]";
+                        if (!startTime) startTime = Date.now();
+                    }
+                    if (track.kind === 'audio') track.attach();
+                });
+
+                room.on(LKC.RoomEvent.Disconnected, () => {
+                    document.getElementById('avatar-container').innerHTML = ""; 
+                    const sig = document.getElementById('connectionStatus');
+                    sig.innerText = "Offline"; 
+                    sig.parentElement.className = "text-xs font-semibold tracking-widest uppercase text-red-500";
+                    document.getElementById('statusDot').className = "w-2 h-2 rounded-full bg-red-600";
+
+                    const statusText = document.getElementById('ariaStatusText');
+                    let timeLeft = 3;
+
+                    const countdown = setInterval(() => {
+                        if (timeLeft <= 0) {
+                            clearInterval(countdown);
+                            statusText.innerHTML = ""; 
+                            toggleSummary();
+                        } else {
+                            statusText.innerHTML = `
+                                <div class="flex flex-col gap-1">
+                                    <span class="text-primary font-bold uppercase text-xs tracking-widest">Ending Session in ${timeLeft}s...</span>
+                                    <span class="text-[10px] text-gray-500 italic font-light uppercase tracking-tighter">Preparing intelligence report...</span>
+                                </div>
+                            `;
+                            timeLeft -= 1;
+                        }
+                    }, 1000);
+                    showFinalSummary();
+                });
+
+                await room.connect(LIVEKIT_URL, data.token);
+                await room.localParticipant.setMicrophoneEnabled(true);
+            } catch (error) { console.error(error); }
+        }
+
+        async function toggleMute() {
+            if (!room) return;
+            isMuted = !isMuted;
+            await room.localParticipant.setMicrophoneEnabled(!isMuted);
+            const icon = document.getElementById('muteIcon');
+            icon.innerText = isMuted ? 'mic_off' : 'mic';
+            icon.classList.toggle('text-red-400', isMuted);
+        }
+
+        async function endSession() { if (room) await room.disconnect(); }
+        function toggleSummary() { 
+            const p = document.getElementById('summaryPanel');
+            p.classList.toggle('translate-x-full'); p.classList.toggle('translate-x-0');
+        }
+        function showFinalSummary() {
+            if (startTime) {
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                document.getElementById('statDuration').innerText = `${Math.floor(elapsed/60).toString().padStart(2,'0')}:${(elapsed%60).toString().padStart(2,'0')}`;
+            }
+        }
+    </script>
+</body>
+</html>
